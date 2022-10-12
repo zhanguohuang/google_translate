@@ -257,7 +257,7 @@ def transFileToMultiLang(dest_list):
     if len(src_tup_list) == 0:
         return
     for dest in dest_list:
-        if dest[3] > 100:
+        if dest[3] >= 100:
             continue
         dest_tup_list = batchTranslateForTup(src_tup_list, dest[0])
         genSrcFileByTup(dest_tup_list, dest)
@@ -311,6 +311,8 @@ def transTitleFileToMultiLang(dest_list):
     delFileIsExist(destTitleFilePath)
     dest_title_file = open(destTitleFilePath, 'x')
     for dest in dest_list:
+        if dest[3] >= 100:
+            continue
         dest_title_file.write('### {:02d}-{}\n'.format(dest[3], dest[2]))
         title_dest, desc_dest = translateTitleAndDesc(title, desc, dest[0])
         dest_title_file.write('```' + '\n')
@@ -359,7 +361,7 @@ if __name__ == '__main__':
     # print_without()
     # print_order()
     # print_you_want_order()
-    transFileToMultiLang(dest_lang_list)
-    # transTitleFileToMultiLang(dest_lang_list_test)
+    # transFileToMultiLang(dest_lang_list)
+    transTitleFileToMultiLang(dest_lang_list)
 
 # See PyCharm help at https://www.jetbrains.com/help/pycharm/
