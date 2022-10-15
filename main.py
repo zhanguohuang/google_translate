@@ -3,13 +3,14 @@
 # Press ⌃R to execute it or replace it with your code.
 # Press Double ⇧ to search everywhere for classes, files, tool windows, actions, and settings.
 import os
-
+import argparse
+import datetime
 from googletrans import Translator
 
 dest_lang_list_test = [
-    ('en-us', 'en-us', '英语（美国）', 6),
-    ('en-uk', 'en-uk', '英语（英国）', 6),
-    ('en-za', 'en-za', '英语（印度）', 6),
+    ('en-us', 'en-us', '英语（美国）', 68),
+    ('en-uk', 'en-uk', '英语（英国）', 69),
+    ('en-za', 'en-za', '英语（印度）', 70),
 ]
 
 dest_lang_list = [
@@ -202,10 +203,10 @@ dest_lang_you_want = [
     '越南语'
 ]
 
-srcFilePath = 'captions.sbv'
-srcTitleFilePath = 'title_and_desc.sbv'
-destTitleFilePath = 'title_and_desc_所有语种.md'
-destFileFormat = '{:03d}_{}.sbv'
+srcFilePathDefault = 'captions.sbv'
+srcTitleFilePathDefault = 'title.sbv'
+destTitleFilePathFmt = '{}_title.md'
+destFileFmt = '{:03d}_{}.sbv'
 translator = Translator()
 
 
@@ -241,7 +242,7 @@ def delFileIsExist(file_path):
 
 
 def genSrcFileByTup(dest_tup_list, dest_lang):
-    dest_file_path = destFileFormat.format(dest_lang[3], dest_lang[2])
+    dest_file_path = destFileFmt.format(dest_lang[3], dest_lang[2])
     delFileIsExist(dest_file_path)
     dest_file = open(dest_file_path, 'x')
     for dest_tup in dest_tup_list:
@@ -250,10 +251,17 @@ def genSrcFileByTup(dest_tup_list, dest_lang):
     dest_file.close()
 
 
-def transFileToMultiLang(dest_list):
+def transFileToMultiLang(content_src_file_path, dest_list, package_name):
+    print('开始执行内容翻译, 源文件路径:{}, 要翻译的语言数量:{}, 打包后的文件名称:{}_content.zip'.format(content_src_file_path, len(dest_list),
+                                                                            package_name))
+    # 删除原来的垃圾文件
+    os.popen('rm -f 0*.sbv')
+    os.popen('rm -rf {}'.format(package_name))
+    os.popen('rm -rf {}_content.zip'.format(package_name))
+
     if len(dest_list) == 0:
         return
-    src_tup_list = getFromFile(srcFilePath)
+    src_tup_list = getFromFile(content_src_file_path)
     if len(src_tup_list) == 0:
         return
     for dest in dest_list:
@@ -261,6 +269,16 @@ def transFileToMultiLang(dest_list):
             continue
         dest_tup_list = batchTranslateForTup(src_tup_list, dest[0])
         genSrcFileByTup(dest_tup_list, dest)
+
+    # 打包
+    os.popen('mkdir {}'.format(package_name))
+    os.popen('mv 0*.sbv {}'.format(package_name))
+    zip_out = os.popen('zip -r {}_content.zip {}'.format(package_name, package_name)).read()
+    print(zip_out)
+    mv_out = os.popen('mv {}_content.zip ~/Downloads'.format(package_name)).read()
+    print(mv_out)
+    print('完成内容的翻译，路径:~/Downloads/{}_content.zip'.format(package_name))
+    os.popen('rm -rf {}'.format(package_name))
 
 
 def get_text_from_tup_list(src_tup_list):
@@ -296,20 +314,27 @@ def batchTranslate(src_list, dest_lang):
     return dest_text_map
 
 
+def singleTranslate(src, dest_lang):
+    t = translator.translate(src, dest=dest_lang)
+    return t.text
+
+
 def translateTitleAndDesc(title, desc, dest_lang):
     title_t = translator.translate(title, dest=dest_lang)
     desc_t = translator.translate(desc, dest=dest_lang)
     return title_t.text, desc_t.text
 
 
-def transTitleFileToMultiLang(dest_list):
+def transTitleFileToMultiLang(title_src_file_path, dest_list, package_name):
     if len(dest_list) == 0:
         return
-    title, desc = getTitleAndDescFromFile(srcTitleFilePath)
+    title, desc = getTitleAndDescFromFile(title_src_file_path)
     if title == '' or desc == '':
         return
-    delFileIsExist(destTitleFilePath)
-    dest_title_file = open(destTitleFilePath, 'x')
+    title_file_name = destTitleFilePathFmt.format(package_name)
+    print('开始执行标题翻译, 源文件路径:{}, 要翻译的语言数量:{}, 目标文件名称:{}'.format(title_src_file_path, len(dest_list), title_file_name))
+    delFileIsExist(title_file_name)
+    dest_title_file = open(title_file_name, 'x')
     for dest in dest_list:
         if dest[3] >= 100:
             continue
@@ -322,6 +347,9 @@ def transTitleFileToMultiLang(dest_list):
         dest_title_file.write(desc_dest + '\n')
         dest_title_file.write('```' + '\n\n')
     dest_title_file.close()
+
+    os.popen('mv {} ~/Downloads'.format(title_file_name))
+    print('完成标题的翻译，路径:~/Downloads/{}'.format(title_file_name))
 
 
 def print_without():
@@ -356,12 +384,55 @@ def print_you_want_order():
         print("{:03d} {}".format(i, dest_lang_you_want[i]))
 
 
+def quickTransLineMultiLang(line, dest_list):
+    for dest in dest_list:
+        if dest[3] >= 100:
+            continue
+        text = singleTranslate(line, dest[0])
+        print('{:02d}-{}: {}'.format(dest[3], dest[2], text))
+
+
 # Press the green button in the gutter to run the script.
 if __name__ == '__main__':
+    parser = argparse.ArgumentParser(description='翻译使用，示例运行：python3 /Users/bytedance/PycharmProjects/google_translate'
+                                                 '/main.py -f 2 -n 搞了个蛋糕的标题 -s title.sbv -t t')
+    parser.add_argument('--test', '-t', type=bool, help='测试语言', default=False, required=False)
+    parser.add_argument('--func', '-f', type=str, nargs='+', help='1：翻译内容；2翻译标题；或者直接输入内容', default='1')
+    parser.add_argument('--name', '-n', type=str, help='生成文件的名称', required=False)
+    parser.add_argument('--source', '-s', type=str, help='源文件', required=False)
+    args = parser.parse_args()
+
+    d = dest_lang_list
+    # 使用测试
+    if args.test:
+        d = dest_lang_list_test
+
+    # 文件名
+    today = datetime.datetime.today()
+    name = '{}-{}-{}_{}:{}'.format(today.year, today.month, today.day, today.hour, today.minute)
+    if args.name:
+        name = args.name
+
+    # 翻译内容
+    if args.func == '1':
+        # 源文件
+        src_file_path = '{}/{}'.format(os.getcwd(), srcFilePathDefault)
+        if args.source:
+            src_file_path = '{}/{}'.format(os.getcwd(), args.source)
+        transFileToMultiLang(src_file_path, d, name)
+    # 标题和描述
+    elif args.func == '2':
+        # 源文件
+        src_file_path = '{}/{}'.format(os.getcwd(), srcTitleFilePathDefault)
+        if args.source:
+            src_file_path = '{}/{}'.format(os.getcwd(), args.source)
+        transTitleFileToMultiLang(src_file_path, d, name)
+    else:
+        content = ' '.join(args.func)
+        quickTransLineMultiLang(content, d)
+
     # print_without()
     # print_order()
     # print_you_want_order()
     # transFileToMultiLang(dest_lang_list)
-    transTitleFileToMultiLang(dest_lang_list)
-
-# See PyCharm help at https://www.jetbrains.com/help/pycharm/
+    # transTitleFileToMultiLang(dest_lang_list)
