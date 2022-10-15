@@ -276,6 +276,7 @@ def transFileToMultiLang(content_src_file_path, dest_list, package_name):
     time.sleep(5)
     # 打包
     os.popen('mkdir {}'.format(package_name))
+    time.sleep(1)
     os.popen('mv 0*.sbv {}'.format(package_name))
     time.sleep(1)
     zip_out = os.popen('zip -r {}_content.zip {}'.format(package_name, package_name)).read()
