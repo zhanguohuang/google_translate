@@ -5,6 +5,8 @@
 import os
 import argparse
 import datetime
+import time
+
 from googletrans import Translator
 
 dest_lang_list_test = [
@@ -258,6 +260,7 @@ def transFileToMultiLang(content_src_file_path, dest_list, package_name):
     os.popen('rm -f 0*.sbv')
     os.popen('rm -rf {}'.format(package_name))
     os.popen('rm -rf {}_content.zip'.format(package_name))
+    time.sleep(3)
 
     if len(dest_list) == 0:
         return
@@ -270,9 +273,11 @@ def transFileToMultiLang(content_src_file_path, dest_list, package_name):
         dest_tup_list = batchTranslateForTup(src_tup_list, dest[0])
         genSrcFileByTup(dest_tup_list, dest)
 
+    time.sleep(5)
     # 打包
     os.popen('mkdir {}'.format(package_name))
     os.popen('mv 0*.sbv {}'.format(package_name))
+    time.sleep(1)
     zip_out = os.popen('zip -r {}_content.zip {}'.format(package_name, package_name)).read()
     print(zip_out)
     mv_out = os.popen('mv {}_content.zip ~/Downloads'.format(package_name)).read()
@@ -348,6 +353,7 @@ def transTitleFileToMultiLang(title_src_file_path, dest_list, package_name):
         dest_title_file.write('```' + '\n\n')
     dest_title_file.close()
 
+    time.sleep(1)
     os.popen('mv {} ~/Downloads'.format(title_file_name))
     print('完成标题的翻译，路径:~/Downloads/{}'.format(title_file_name))
 
