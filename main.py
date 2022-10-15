@@ -397,7 +397,7 @@ if __name__ == '__main__':
     parser = argparse.ArgumentParser(description='翻译使用，示例运行：python3 /Users/bytedance/PycharmProjects/google_translate'
                                                  '/main.py -f 2 -n 搞了个蛋糕的标题 -s title.sbv -t t')
     parser.add_argument('--test', '-t', type=bool, help='测试语言', default=False, required=False)
-    parser.add_argument('--func', '-f', type=str, nargs='+', help='1：翻译内容；2翻译标题；或者直接输入内容', default='1')
+    parser.add_argument('--func', '-f', type=str, nargs='+', help='1：翻译内容；2翻译标题；或者直接输入内容', default=['1'])
     parser.add_argument('--name', '-n', type=str, help='生成文件的名称', required=False)
     parser.add_argument('--source', '-s', type=str, help='源文件', required=False)
     args = parser.parse_args()
@@ -409,7 +409,7 @@ if __name__ == '__main__':
 
     # 文件名
     today = datetime.datetime.today()
-    name = '{}-{}-{}_{}:{}'.format(today.year, today.month, today.day, today.hour, today.minute)
+    name = '{}-{}-{}_{}_{}'.format(today.year, today.month, today.day, today.hour, today.minute)
     if args.name:
         name = args.name
 
