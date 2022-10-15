@@ -414,14 +414,14 @@ if __name__ == '__main__':
         name = args.name
 
     # 翻译内容
-    if args.func == '1':
+    if args.func == ['1']:
         # 源文件
         src_file_path = '{}/{}'.format(os.getcwd(), srcFilePathDefault)
         if args.source:
             src_file_path = '{}/{}'.format(os.getcwd(), args.source)
         transFileToMultiLang(src_file_path, d, name)
     # 标题和描述
-    elif args.func == '2':
+    elif args.func == ['2']:
         # 源文件
         src_file_path = '{}/{}'.format(os.getcwd(), srcTitleFilePathDefault)
         if args.source:
