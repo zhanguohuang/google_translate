@@ -5,6 +5,7 @@
 import os
 import argparse
 import datetime
+import threading
 import time
 
 from googletrans import Translator
@@ -253,6 +254,18 @@ def genSrcFileByTup(dest_tup_list, dest_lang):
     dest_file.close()
 
 
+class TransSrcToFileThread(threading.Thread):
+    def __init__(self, src_tup_list, dest):
+        threading.Thread.__init__(self)
+        self.src_tup_list = src_tup_list
+        self.dest = dest
+
+    def run(self):
+        dest_tup_list = batchTranslateForTup(self.src_tup_list, self.dest[0])
+        genSrcFileByTup(dest_tup_list, self.dest)
+        print('{}_{} 翻译完成'.format(self.dest[3], self.dest[2]))
+
+
 def transFileToMultiLang(content_src_file_path, dest_list, package_name):
     print('开始执行内容翻译, 源文件路径:{}, 要翻译的语言数量:{}, 打包后的文件名称:{}_content.zip'.format(content_src_file_path, len(dest_list),
                                                                             package_name))
@@ -267,13 +280,18 @@ def transFileToMultiLang(content_src_file_path, dest_list, package_name):
     src_tup_list = getFromFile(content_src_file_path)
     if len(src_tup_list) == 0:
         return
+    thread_list = []
     for dest in dest_list:
-        if dest[3] >= 100:
-            continue
-        dest_tup_list = batchTranslateForTup(src_tup_list, dest[0])
-        genSrcFileByTup(dest_tup_list, dest)
+        try:
+            t = TransSrcToFileThread(src_tup_list, dest)
+            t.start()
+            thread_list.append(t)
+        except:
+            print("Error: 无法启动线程")
 
-    time.sleep(5)
+    for t in thread_list:
+        t.join()
+    time.sleep(3)
     # 打包
     os.popen('mkdir {}'.format(package_name))
     time.sleep(1)
@@ -283,7 +301,7 @@ def transFileToMultiLang(content_src_file_path, dest_list, package_name):
     print(zip_out)
     mv_out = os.popen('mv {}_content.zip ~/Downloads'.format(package_name)).read()
     print(mv_out)
-    print('完成内容的翻译，路径:~/Downloads/{}_content.zip'.format(package_name))
+    print('完成内容的翻译，路径:~/Downloads/{}_content.zip，请记得检查哦，更重要的是保持宁静愉悦的心情'.format(package_name))
     os.popen('rm -rf {}'.format(package_name))
 
 
@@ -308,7 +326,8 @@ def batchTranslateForTup(src_tup_list, desc_lang):
 def batchTranslate(src_list, dest_lang):
     dest_text_map = dict()
     src_text = '\n'.join(src_list)
-    t = translator.translate(src_text, dest=dest_lang)
+    tor = Translator()
+    t = tor.translate(src_text, dest=dest_lang)
     dest_text_list = t.text.split('\n')
     for i in range(len(src_list)):
         dest_text_map[src_list[i]] = dest_text_list[i]
@@ -326,9 +345,24 @@ def singleTranslate(src, dest_lang):
 
 
 def translateTitleAndDesc(title, desc, dest_lang):
-    title_t = translator.translate(title, dest=dest_lang)
-    desc_t = translator.translate(desc, dest=dest_lang)
+    tor = Translator()
+    title_t = tor.translate(title, dest=dest_lang)
+    desc_t = tor.translate(desc, dest=dest_lang)
     return title_t.text, desc_t.text
+
+
+class TransTitleThread(threading.Thread):
+    def __init__(self, title, desc, dest, all_dict):
+        threading.Thread.__init__(self)
+        self.title = title
+        self.desc = desc
+        self.dest = dest
+        self.all_dict = all_dict
+
+    def run(self):
+        title_dest, desc_dest = translateTitleAndDesc(self.title, self.desc, self.dest[0])
+        self.all_dict[self.dest] = (title_dest, desc_dest)
+        print('{}_{} 翻译标题完成'.format(self.dest[3], self.dest[2]))
 
 
 def transTitleFileToMultiLang(title_src_file_path, dest_list, package_name):
@@ -340,12 +374,26 @@ def transTitleFileToMultiLang(title_src_file_path, dest_list, package_name):
     title_file_name = destTitleFilePathFmt.format(package_name)
     print('开始执行标题翻译, 源文件路径:{}, 要翻译的语言数量:{}, 目标文件名称:{}'.format(title_src_file_path, len(dest_list), title_file_name))
     delFileIsExist(title_file_name)
-    dest_title_file = open(title_file_name, 'x')
+
+    all_dict = dict()
+    thread_list = []
     for dest in dest_list:
-        if dest[3] >= 100:
-            continue
+        t = TransTitleThread(title, desc, dest, all_dict)
+        t.start()
+        thread_list.append(t)
+
+    for t in thread_list:
+        t.join()
+
+    dest_title_file = open(title_file_name, 'x')
+    keys = list(all_dict.keys())
+
+    def takeIndex(item):
+        return item[3]
+    keys.sort(key=takeIndex)
+    for dest in keys:
         dest_title_file.write('### {:02d}-{}\n'.format(dest[3], dest[2]))
-        title_dest, desc_dest = translateTitleAndDesc(title, desc, dest[0])
+        (title_dest, desc_dest) = all_dict[dest]
         dest_title_file.write('```' + '\n')
         dest_title_file.write(title_dest + '\n')
         dest_title_file.write('```' + '\n')
@@ -356,7 +404,7 @@ def transTitleFileToMultiLang(title_src_file_path, dest_list, package_name):
 
     time.sleep(1)
     os.popen('mv {} ~/Downloads'.format(title_file_name))
-    print('完成标题的翻译，路径:~/Downloads/{}'.format(title_file_name))
+    print('完成标题的翻译，路径:~/Downloads/{}, 请记得检查哦，更重要的是保持宁静愉悦的心情'.format(title_file_name))
 
 
 def print_without():
@@ -399,6 +447,14 @@ def quickTransLineMultiLang(line, dest_list):
         print('{:02d}-{}: {}'.format(dest[3], dest[2], text))
 
 
+def usefulDestLang(dd):
+    r = []
+    for d in dd:
+        if d[3] < 100:
+            r.append(d)
+    return r
+
+
 # Press the green button in the gutter to run the script.
 if __name__ == '__main__':
     parser = argparse.ArgumentParser(description='翻译使用，示例运行：python3 /Users/bytedance/PycharmProjects/google_translate'
@@ -414,6 +470,7 @@ if __name__ == '__main__':
     if args.test:
         d = dest_lang_list_test
 
+    d = usefulDestLang(d)
     # 文件名
     today = datetime.datetime.today()
     name = '{}-{}-{}_{}_{}'.format(today.year, today.month, today.day, today.hour, today.minute)
